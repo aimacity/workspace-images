@@ -111,10 +111,11 @@ ENV GOPATH=/workspace/go \
 ### Java ###
 ## Place '.gradle' and 'm2-repository' in /workspace because (1) that's a fast volume, (2) it survives workspace-restarts and (3) it can be warmed-up by pre-builds.
 RUN curl -s "https://get.sdkman.io" | bash \
- && bash -c ". $HOME/.sdkman/bin/sdkman-init.sh \
-             && sdk install java 8.0.212-zulu \
-             # && sdk install java 11.0.2-open \
-             && sdk default java 8.0.212-zulu \
+ && bash -c ". /home/gitpod/.sdkman/bin/sdkman-init.sh \
+             && sdk install java 8.0.202-zulufx \
+             #&& sdk install java 11.0.2-zulufx \
+             #&& sdk install java 12.0.1-open \
+             && sdk default java 8.0.202-zulufx \
              && sdk install gradle \
              && sdk install maven \
              && mkdir $HOME/.m2 \
@@ -158,9 +159,9 @@ RUN curl -fsSL https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-ins
     && pip3 install --upgrade pip \
     && pip3 install virtualenv pipenv pylint rope flake8 autopep8 pep8 pylama pydocstyle bandit python-language-server[all]==0.25.0 \
     && rm -rf /tmp/*
-# use global installation location for pip modules
-ENV PYTHONUSERBASE=/workspace/.pip-modules \
-    PIP_USER=yes
+# Gitpod will automatically add user site under `/workspace` to persist your packages.
+# ENV PYTHONUSERBASE=/workspace/.pip-modules \
+#    PIP_USER=yes
 
 ### Ruby ###
 RUN curl -sSL https://rvm.io/mpapis.asc | gpg --import - \
