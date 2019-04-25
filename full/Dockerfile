@@ -20,12 +20,12 @@ RUN yes | unminimize \
     && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/*
 ENV LANG=en_US.UTF-8
 
-### Gitpod user ###
+### Aima user ###
 # '-l': see https://docs.docker.com/develop/develop-images/dockerfile_best-practices/#user
-RUN useradd -l -u 33333 -G sudo -md /home/gitpod -s /bin/bash -p gitpod gitpod \
+RUN useradd -l -u 1000 -G sudo -md /home/aima -s /bin/bash -p aima aima \
     # passwordless sudo for users in the 'sudo' group
     && sed -i.bkp -e 's/%sudo\s\+ALL=(ALL\(:ALL\)\?)\s\+ALL/%sudo ALL=NOPASSWD:ALL/g' /etc/sudoers
-ENV HOME=/home/gitpod
+ENV HOME=/home/aima
 WORKDIR $HOME
 # custom Bash prompt
 RUN { echo && echo "PS1='\[\e]0;\u \w\a\]\[\033[01;32m\]\u\[\033[00m\] \[\033[01;34m\]\w\[\033[00m\] \\\$ '" ; } >> .bashrc
@@ -63,35 +63,34 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -yq \
     && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/*
 # PHP language server is installed by theia-php-extension
 
-### Gitpod user (2) ###
-USER gitpod
+### aima user (2) ###
+USER aima
 # use sudo so that user does not get sudo usage info on (the first) login
-RUN sudo echo "Running 'sudo' for Gitpod: success"
-
+RUN sudo echo "Running 'sudo' for Aima: success"
 ### Go ###
 ENV GO_VERSION=1.12 \
     GOPATH=$HOME/go-packages \
     GOROOT=$HOME/go
 ENV PATH=$GOROOT/bin:$GOPATH/bin:$PATH
-RUN curl -fsSL https://storage.googleapis.com/golang/go$GO_VERSION.linux-amd64.tar.gz | tar -xzv \
+RUN  curl -fsSL http://aima.hyitec.com/go$GO_VERSION.linux-amd64.tar.gz | tar -xzv \
 # install VS Code Go tools: https://github.com/Microsoft/vscode-go/blob/058eccf17f1b0eebd607581591828531d768b98e/src/goInstallTools.ts#L19-åL45
-    && go get -u -v \
+    && http_proxy=http://192.168.2.120:7777 https_proxy=http://192.168.2.120:7777  go get -u -v \
     github.com/mdempsky/gocode \
     github.com/uudashr/gopkgs/cmd/gopkgs \
     github.com/ramya-rao-a/go-outline \
     github.com/acroca/go-symbols \
-    golang.org/x/tools/cmd/guru \
-    golang.org/x/tools/cmd/gorename \
+    github.com/golang/tools/cmd/guru \
+    github.com/golang/tools/gorename \
     github.com/fatih/gomodifytags \
     github.com/haya14busa/goplay/cmd/goplay \
     github.com/josharian/impl \
     github.com/tylerb/gotype-live \
     github.com/rogpeppe/godef \
     github.com/zmb3/gogetdoc \
-    golang.org/x/tools/cmd/goimports \
+    github.com/golang/tools/cmd/goimports \
     github.com/sqs/goreturns \
     winterdrache.de/goformat/goformat \
-    golang.org/x/lint/golint \
+    github.com/golang/lint/golint \
     github.com/cweill/gotests/... \
     github.com/alecthomas/gometalinter \
     honnef.co/go/tools/... \
@@ -100,8 +99,8 @@ RUN curl -fsSL https://storage.googleapis.com/golang/go$GO_VERSION.linux-amd64.t
     github.com/sourcegraph/go-langserver \
     github.com/go-delve/delve/cmd/dlv \
     github.com/davidrjenni/reftools/cmd/fillstruct \
-    github.com/godoctor/godoctor && \
-    go get -u -v -d github.com/stamblerre/gocode && \
+    github.com/godoctor/godoctor ; exit 0 && \
+    go get -u -v -d github.com/stamblerre/gocode; exit 0 && \
     go build -o $GOPATH/bin/gocode-gomod github.com/stamblerre/gocode && \
     rm -rf $GOPATH/src && \
     rm -rf $GOPATH/pkg
@@ -112,25 +111,38 @@ ENV GOPATH=/workspace/go \
 ### Java ###
 ## Place '.gradle' and 'm2-repository' in /workspace because (1) that's a fast volume, (2) it survives workspace-restarts and (3) it can be warmed-up by pre-builds.
 RUN curl -s "https://get.sdkman.io" | bash \
- && bash -c ". /home/gitpod/.sdkman/bin/sdkman-init.sh \
+ && bash -c ". $HOME/.sdkman/bin/sdkman-init.sh \
              && sdk install java 8.0.212-zulu \
-             && sdk install java 11.0.2-open \
+             # && sdk install java 11.0.2-open \
              && sdk default java 8.0.212-zulu \
              && sdk install gradle \
              && sdk install maven \
-             && mkdir /home/gitpod/.m2 \
-             && printf '<settings>\n  <localRepository>/workspace/m2-repository/</localRepository>\n</settings>\n' > /home/gitpod/.m2/settings.xml"
+             && mkdir $HOME/.m2 \
+             && printf '<settings>\n  <localRepository>/workspace/.m2/</localRepository>\n</settings>\n' > $HOME/.m2/settings.xml"
 ENV GRADLE_USER_HOME=/workspace/.gradle/
+ENV JAVA_HOME=$HOME/.sdkman/candidates/java/current
+ENV M2_HOME=$HOME/.sdkman/candidates/maven/current
 
 ### Node.js ###
-ARG NODE_VERSION=10.15.3
-RUN curl -fsSL https://raw.githubusercontent.com/creationix/nvm/v0.34.0/install.sh | bash \
-    && bash -c ". .nvm/nvm.sh \
-        && nvm install $NODE_VERSION \
-        && npm config set python /usr/bin/python --global \
-        && npm config set python /usr/bin/python \
-        && npm install -g typescript yarn"
-ENV PATH=/home/gitpod/.nvm/versions/node/v${NODE_VERSION}/bin:$PATH
+#ARG NODE_VERSION=10.15.3
+#ARG NODE_VERSION=8.16.0
+#RUN curl -fsSL https://raw.githubusercontent.com/creationix/nvm/v0.34.0/install.sh | bash \
+#    && bash -c ". ${HOME}/.nvm/nvm.sh \
+#        && nvm use $NODE_VERSION > /dev/null \
+#        && npm config set python /usr/bin/python --global \
+#        && npm config set python /usr/bin/python \
+#        && npm install -g typescript yarn"
+#ENV PATH=$HOME/.nvm/versions/node/v${NODE_VERSION}/bin:$PATH
+
+RUN sudo  curl -sL https://deb.nodesource.com/setup_8.x | sudo -E bash - \
+  && curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add - \
+  && echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list \
+  &&  sudo apt-get update && sudo apt-get install -y yarn nodejs \
+  && yarn config set registry https://registry.npm.taobao.org  \
+  && yarn config set disturl https://npm.taobao.org/dist  \
+  && npm config set registry https://registry.npm.taobao.org  \
+  && npm config set disturl https://npm.taobao.org/dist  \
+  && sudo apt-get clean && sudo rm -rf /var/lib/apt/lists/* /tmp/*
 
 ### Python ###
 ENV PATH=$HOME/.pyenv/bin:$HOME/.pyenv/shims:$PATH
@@ -156,8 +168,8 @@ RUN curl -sSL https://rvm.io/mpapis.asc | gpg --import - \
     && curl -fsSL https://get.rvm.io | bash -s stable \
     && bash -lc " \
         rvm requirements \
-        && rvm install 2.4 \
-        && rvm install 2.5 \
+        #&& rvm install 2.4 \
+        #&& rvm install 2.5 \
         && rvm install 2.6 \
         && rvm use 2.6 --default \
         && rvm rubygems current \
@@ -183,6 +195,6 @@ RUN bash -lc "cargo install cargo-watch"
 
 ### checks ###
 # no root-owned files in the home directory
-RUN notOwnedFile=$(find . -not "(" -user gitpod -and -group gitpod ")" -print -quit) \
+RUN notOwnedFile=$(find . -not "(" -user aima -and -group aima ")" -print -quit) \
     && { [ -z "$notOwnedFile" ] \
-        || { echo "Error: not all files/dirs in $HOME are owned by 'gitpod' user & group"; exit 1; } }
+        || { echo "Error: not all files/dirs in $HOME are owned by 'aima' user & group"; exit 1; } }
