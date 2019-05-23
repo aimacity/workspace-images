@@ -65,6 +65,8 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -yq \
 
 ### aima user (2) ###
 USER aima
+#ENV http_proxy=http://192.168.2.120:7777 
+#ENV https_proxy=http://192.168.2.120:7777 
 # use sudo so that user does not get sudo usage info on (the first) login
 RUN sudo echo "Running 'sudo' for Aima: success"
 ### Go ###
@@ -74,7 +76,7 @@ ENV GO_VERSION=1.12 \
 ENV PATH=$GOROOT/bin:$GOPATH/bin:$PATH
 RUN  curl -fsSL http://aima.hyitec.com/go$GO_VERSION.linux-amd64.tar.gz | tar -xzv \
 # install VS Code Go tools: https://github.com/Microsoft/vscode-go/blob/058eccf17f1b0eebd607581591828531d768b98e/src/goInstallTools.ts#L19-åL45
-    && http_proxy=http://192.168.2.120:7777 https_proxy=http://192.168.2.120:7777  go get -u -v \
+    &&    go get -u -v \
     github.com/mdempsky/gocode \
     github.com/uudashr/gopkgs/cmd/gopkgs \
     github.com/ramya-rao-a/go-outline \
@@ -118,36 +120,46 @@ RUN curl -s "https://get.sdkman.io" | bash \
              && sdk default java 8.0.202-zulufx \
              && sdk install gradle \
              && sdk install maven \
-             && mkdir $HOME/.m2 \
-             && printf '<settings>\n  <localRepository>/workspace/.m2/</localRepository>\n</settings>\n' > $HOME/.m2/settings.xml"
+             && mkdir $HOME/.m2 "
+  #           "&& printf '<settings>\n  <localRepository>/workspace/.m2/</localRepository>\n</settings>\n' > $HOME/.m2/settings.xml"
 ENV GRADLE_USER_HOME=/workspace/.gradle/
 ENV JAVA_HOME=$HOME/.sdkman/candidates/java/current
 ENV M2_HOME=$HOME/.sdkman/candidates/maven/current
 
 ### Node.js ###
-#ARG NODE_VERSION=10.15.3
+ARG NODE_VERSION=10.15.3
 #ARG NODE_VERSION=8.16.0
-#RUN curl -fsSL https://raw.githubusercontent.com/creationix/nvm/v0.34.0/install.sh | bash \
-#    && bash -c ". ${HOME}/.nvm/nvm.sh \
-#        && nvm use $NODE_VERSION > /dev/null \
-#        && npm config set python /usr/bin/python --global \
-#        && npm config set python /usr/bin/python \
-#        && npm install -g typescript yarn"
-#ENV PATH=$HOME/.nvm/versions/node/v${NODE_VERSION}/bin:$PATH
 
-RUN sudo  curl -sL https://deb.nodesource.com/setup_8.x | sudo -E bash - \
-  && curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add - \
-  && echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list \
-  &&  sudo apt-get update && sudo apt-get install -y yarn nodejs \
-  && yarn config set registry https://registry.npm.taobao.org  \
-  && yarn config set disturl https://npm.taobao.org/dist  \
-  && npm config set registry https://registry.npm.taobao.org  \
-  && npm config set disturl https://npm.taobao.org/dist  \
-  && sudo apt-get clean && sudo rm -rf /var/lib/apt/lists/* /tmp/*
+RUN curl -fsSL https://raw.githubusercontent.com/creationix/nvm/v0.34.0/install.sh | bash 
+RUN echo 'export NVM_DIR="$HOME/.nvm"'                                       >> "$HOME/.bashrc"
+RUN echo '[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"  # This loads nvm' >> "$HOME/.bashrc"
+RUN echo '[ -s "$NVM_DIR/bash_completion" ] && . "$NVM_DIR/bash_completion" # This loads nvm bash_completion' >> "$HOME/.bashrc"
+
+# nodejs and tools
+RUN bash -c 'source $HOME/.nvm/nvm.sh   && nvm install $NODE_VERSION     > /dev/null &2>1   '
+
+ENV PATH=$HOME/.nvm/versions/node/v${NODE_VERSION}/bin:$PATH
+
+RUN npm config set registry https://registry.npm.taobao.org &&\
+ npm config set disturl https://npm.taobao.org/dist && \
+ npm config set python /usr/bin/python --global  && \
+ npm config set python /usr/bin/python  && \
+ npm install -g yarn typescript 
+
+
+# RUN sudo  curl -sL https://deb.nodesource.com/setup_8.x | sudo -E bash - \
+#   && curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add - \
+#   && echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list \
+#   &&  sudo apt-get update && sudo apt-get install -y yarn nodejs \
+#   && yarn config set registry https://registry.npm.taobao.org  \
+#   && yarn config set disturl https://npm.taobao.org/dist  \
+#   && npm config set registry https://registry.npm.taobao.org  \
+#   && npm config set disturl https://npm.taobao.org/dist  \
+#   && sudo apt-get clean && sudo rm -rf /var/lib/apt/lists/* /tmp/*
 
 ### Python ###
 ENV PATH=$HOME/.pyenv/bin:$HOME/.pyenv/shims:$PATH
-RUN curl -fsSL https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash \
+RUN curl  -fsSL https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash \
     && { echo; \
         echo 'eval "$(pyenv init -)"'; \
         echo 'eval "$(pyenv virtualenv-init -)"'; } >> .bashrc \
@@ -166,7 +178,7 @@ RUN curl -fsSL https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-ins
 ### Ruby ###
 RUN curl -sSL https://rvm.io/mpapis.asc | gpg --import - \
     && curl -sSL https://rvm.io/pkuczynski.asc | gpg --import - \
-    && curl -fsSL https://get.rvm.io | bash -s stable \
+    &&  curl  -fsSL https://get.rvm.io | bash -s stable \
     && bash -lc " \
         rvm requirements \
         #&& rvm install 2.4 \
